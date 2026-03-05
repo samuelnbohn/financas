@@ -6,6 +6,8 @@
 <title>Finanças Pessoais</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 <style>
 :root {
   --bg:#f0f0eb; --white:#fff; --sidebar:#111;
@@ -211,6 +213,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="sb-item" onclick="goTo('metas')" title="Metas">🎯</div>
     <div class="sb-item" onclick="goTo('historico')" title="Histórico">📈</div>
     <div class="sb-bottom">
+      <div class="sb-item" id="sb-drive" onclick="openDriveModal()" title="Google Drive">☁️</div>
       <div class="sb-item" onclick="exportData()" title="Exportar backup">💾</div>
       <div class="sb-item" onclick="document.getElementById('imp').click()" title="Importar backup">📂</div>
       <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(this)">
@@ -220,6 +223,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
   <!-- CONTENT -->
   <div class="content">
+    <div id="drive-bar" style="display:none;background:var(--white);border-radius:var(--rsm);padding:10px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;border:1.5px solid var(--border);flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="drive-bar-icon" style="font-size:18px">☁️</span>
+        <div>
+          <div style="font-weight:600;font-size:13px" id="drive-bar-text">Não conectado ao Google Drive</div>
+          <div style="font-size:11px;color:var(--muted)" id="drive-bar-sub">Dados salvos apenas localmente</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--muted)" id="drive-bar-time"></span>
+        <button id="drive-bar-btn" class="btn-black" style="font-size:12px;padding:8px 14px" onclick="openDriveModal()">Conectar</button>
+      </div>
+    </div>
 
     <!-- ══ ORÇAMENTO ══ -->
     <div class="page active" id="page-orcamento">
@@ -637,7 +653,257 @@ function closeM(id){document.getElementById(id).classList.remove('open')}
 window.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open')});
 function exportData(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='financas_'+new Date().toISOString().split('T')[0]+'.json';a.click()}
 function importData(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);save();goTo('orcamento');alert('Dados importados!')}catch(err){alert('Arquivo inválido.')}};r.readAsText(f);input.value=''}
-window.addEventListener("DOMContentLoaded", init);
+
+
+// ══════════════════════════════════════
+// GOOGLE DRIVE BACKUP
+// ══════════════════════════════════════
+const DRIVE_FILE = 'financas_backup.json';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+let driveConnected = false;
+let driveFileId = null;
+let driveTokenClient = null;
+let gapiLoaded = false;
+let gisLoaded = false;
+let syncTimer = null;
+
+function driveConfigLoad(){
+  try{ const c=localStorage.getItem('fin_drive'); return c?JSON.parse(c):null; }catch(e){return null;}
+}
+function driveConfigSave(cfg){
+  try{ localStorage.setItem('fin_drive', JSON.stringify(cfg)); }catch(e){}
+}
+
+function openDriveModal(){
+  const cfg = driveConfigLoad();
+  // If already connected, show disconnect option
+  if(driveConnected){
+    if(confirm('Desconectar do Google Drive?')){
+      try{ google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token, ()=>{}); }catch(e){}
+      try{ gapi.client.setToken(null); }catch(e){}
+      driveConnected=false; driveFileId=null;
+      driveUpdateUI();
+    }
+    return;
+  }
+  document.getElementById('drive-client-id-input').value = cfg?.clientId||'';
+  document.getElementById('drive-origin-display').value = window.location.origin||window.location.href.split('/').slice(0,3).join('/');
+  document.getElementById('drive-modal-btn').textContent = 'Salvar e conectar';
+  openM('m-drive');
+}
+
+function driveConnect(){
+  const clientId = document.getElementById('drive-client-id-input').value.trim();
+  if(!clientId){ alert('Insira o Client ID'); return; }
+  driveConfigSave({clientId});
+  closeM('m-drive');
+  driveInit(clientId);
+}
+
+function driveInit(clientId){
+  driveUpdateUILoading();
+
+  function tryConnect(){
+    if(!gapiLoaded || !gisLoaded) return;
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: async (resp) => {
+        if(resp.error){ driveUpdateUIError(resp.error); return; }
+        driveConnected = true;
+        driveUpdateUI();
+        await driveLoadFromCloud();
+      }
+    });
+    const token = gapi.client.getToken();
+    driveTokenClient.requestAccessToken({prompt: token ? '' : 'consent'});
+  }
+
+  if(!gapiLoaded){
+    gapi.load('client', async () => {
+      await gapi.client.init({
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+      });
+      gapiLoaded = true;
+      tryConnect();
+    });
+  }
+
+  if(!gisLoaded){
+    // GIS loads async - poll until ready
+    const waitGIS = setInterval(()=>{
+      if(typeof google !== 'undefined' && google.accounts){
+        gisLoaded = true;
+        clearInterval(waitGIS);
+        tryConnect();
+      }
+    }, 200);
+  } else {
+    tryConnect();
+  }
+}
+
+async function driveSyncToCloud(){
+  if(!driveConnected) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try{
+      const body = JSON.stringify(S, null, 2);
+      if(driveFileId){
+        await gapi.client.request({
+          path: `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}`,
+          method: 'PATCH',
+          params: {uploadType:'media'},
+          headers: {'Content-Type':'application/json'},
+          body
+        });
+      } else {
+        const boundary = 'fin_bnd_001';
+        const multipart = [
+          '--'+boundary,
+          'Content-Type: application/json; charset=UTF-8','',
+          JSON.stringify({name:DRIVE_FILE, parents:['appDataFolder']}),
+          '--'+boundary,
+          'Content-Type: application/json','',
+          body,
+          '--'+boundary+'--'
+        ].join('\r\n');
+        const res = await gapi.client.request({
+          path: 'https://www.googleapis.com/upload/drive/v3/files',
+          method: 'POST',
+          params: {uploadType:'multipart'},
+          headers: {'Content-Type':`multipart/related; boundary=${boundary}`},
+          body: multipart
+        });
+        driveFileId = res.result.id;
+      }
+      const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('drive-bar-time').textContent = 'Salvo às '+t;
+    }catch(e){ console.warn('Drive save error:', e); }
+  }, 1500);
+}
+
+async function driveLoadFromCloud(){
+  if(!driveConnected) return;
+  try{
+    const list = await gapi.client.drive.files.list({
+      spaces: 'appDataFolder',
+      fields: 'files(id,name)',
+      q: `name='${DRIVE_FILE}'`
+    });
+    const files = list.result.files;
+    if(files && files.length > 0){
+      driveFileId = files[0].id;
+      const res = await gapi.client.drive.files.get({fileId: driveFileId, alt:'media'});
+      const data = typeof res.result === 'string' ? JSON.parse(res.result) : res.result;
+      if(data && data.meses){
+        S = data;
+        save();
+        renderOrc();
+        const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        document.getElementById('drive-bar-time').textContent = 'Sincronizado às '+t;
+      }
+    }
+  }catch(e){ console.warn('Drive load error:', e); }
+}
+
+function driveUpdateUI(){
+  const bar = document.getElementById('drive-bar');
+  bar.style.display = 'flex';
+  const icon = document.getElementById('drive-bar-icon');
+  const text = document.getElementById('drive-bar-text');
+  const sub  = document.getElementById('drive-bar-sub');
+  const btn  = document.getElementById('drive-bar-btn');
+  const sb   = document.getElementById('sb-drive');
+  if(driveConnected){
+    icon.textContent = '✅';
+    text.textContent = 'Google Drive conectado';
+    sub.textContent  = 'Sincronizando automaticamente';
+    btn.textContent  = 'Desconectar';
+    btn.style.background = '#c0392b';
+    if(sb) sb.title = 'Drive conectado';
+  } else {
+    icon.textContent = '☁️';
+    text.textContent = 'Google Drive não conectado';
+    sub.textContent  = 'Dados salvos apenas localmente';
+    btn.textContent  = 'Conectar';
+    btn.style.background = 'var(--black)';
+    if(sb) sb.title = 'Conectar Google Drive';
+  }
+}
+
+function driveUpdateUILoading(){
+  const bar = document.getElementById('drive-bar');
+  bar.style.display = 'flex';
+  document.getElementById('drive-bar-icon').textContent = '⏳';
+  document.getElementById('drive-bar-text').textContent = 'Conectando ao Google Drive...';
+  document.getElementById('drive-bar-sub').textContent  = 'Aguarde a autenticação';
+  document.getElementById('drive-bar-btn').textContent  = 'Aguarde...';
+}
+
+function driveUpdateUIError(err){
+  document.getElementById('drive-bar-icon').textContent = '❌';
+  document.getElementById('drive-bar-text').textContent = 'Erro: '+err;
+  document.getElementById('drive-bar-btn').textContent  = 'Tentar novamente';
+  document.getElementById('drive-bar-btn').style.background = 'var(--black)';
+}
+
+// Auto-reconectar se já tinha clientId salvo
+function driveAutoReconnect(){
+  driveUpdateUI(); // show bar
+  const cfg = driveConfigLoad();
+  if(cfg && cfg.clientId){
+    // Check if GIS/GAPI already loaded
+    const waitAll = setInterval(()=>{
+      if(typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts){
+        clearInterval(waitAll);
+        gisLoaded = true;
+        driveInit(cfg.clientId);
+      }
+    }, 300);
+    setTimeout(()=>clearInterval(waitAll), 10000); // timeout after 10s
+  }
+}
+
+// Override save() to also sync to Drive
+const _originalSave = save;
+function save(){
+  _originalSave();
+  if(driveConnected) driveSyncToCloud();
+}
+
+
+window.addEventListener("DOMContentLoaded", () => { init(); driveAutoReconnect(); });
 </script>
+
+<!-- MODAL DRIVE -->
+<div class="modal-overlay" id="m-drive">
+  <div class="modal">
+    <h2>☁️ Google Drive</h2>
+    <div id="drive-modal-body">
+      <div style="background:var(--bg);border-radius:var(--rsm);padding:14px;margin-bottom:18px;font-size:13px;line-height:1.7;color:var(--muted)">
+        <strong style="color:var(--text)">Como configurar (só uma vez):</strong><br>
+        1. Acesse <a href="https://console.cloud.google.com" target="_blank" style="color:var(--black);font-weight:600">console.cloud.google.com</a><br>
+        2. Crie um projeto → ative <strong style="color:var(--text)">Google Drive API</strong><br>
+        3. Credenciais → OAuth 2.0 → tipo <strong style="color:var(--text)">Aplicativo da Web</strong><br>
+        4. Em "Origens autorizadas" cole a URL do seu site<br>
+        5. Cole o <strong style="color:var(--text)">Client ID</strong> abaixo
+      </div>
+      <div class="fg">
+        <label>Client ID</label>
+        <input type="text" id="drive-client-id-input" placeholder="xxxx.apps.googleusercontent.com" style="font-size:12px">
+      </div>
+      <div class="fg">
+        <label>URL do seu site (para referência)</label>
+        <input type="text" id="drive-origin-display" readonly style="color:var(--muted);font-size:12px">
+      </div>
+    </div>
+    <div class="mactions">
+      <button class="mbtn mc" onclick="closeM('m-drive')">Cancelar</button>
+      <button class="mbtn mk" id="drive-modal-btn" onclick="driveConnect()">Salvar e conectar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
