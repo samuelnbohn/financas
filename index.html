@@ -257,7 +257,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
             <div class="renda-label">Renda</div>
             <div class="renda-val" id="renda-disp" onclick="editRenda()">R$ 0,00</div>
             <input id="renda-inp" type="number" placeholder="0" min="0" step="0.01"
-              onblur="saveRenda()" onkeydown="if(event.key==='Enter')saveRenda()">
+              onkeydown="if(event.key==='Enter'){saveRenda()}else if(event.key==='Escape'){cancelRenda()}">
           </div>
           <button class="btn-black" onclick="openAddGasto()">+ Lançar gasto</button>
         </div>
@@ -427,7 +427,7 @@ const CATS=[
 
 let S={pcts:{custos:30,conforto:10,metas:20,prazeres:10,liberdade:25,conhecimento:5},meses:{},mfs:[],cur:''};
 
-function save(){try{localStorage.setItem('fin3',JSON.stringify(S))}catch(e){}}
+function save(){try{localStorage.setItem('fin3',JSON.stringify(S))}catch(e){} if(driveConnected) driveSyncToCloud();}
 function load(){try{const d=localStorage.getItem('fin3');if(d)S=JSON.parse(d)}catch(e){}}
 function mk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function ml(k){const[y,m]=k.split('-');const n=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];return n[+m-1]+'/'+y}
@@ -463,15 +463,37 @@ function changeMonth(d){
 }
 
 function editRenda(){
-  const i=document.getElementById('renda-inp'),v=document.getElementById('renda-disp');
-  i.value=curD().renda||'';i.style.display='block';v.style.display='none';i.focus();
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  i.value=curD().renda||'';
+  i.style.display='block';
+  v.style.display='none';
+  setTimeout(()=>i.focus(),50);
 }
 function saveRenda(){
-  const i=document.getElementById('renda-inp'),v=document.getElementById('renda-disp');
-  curD().renda=parseFloat(i.value)||0;
-  i.style.display='none';v.style.display='';
-  save();renderOrc();
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  const val=parseFloat(i.value)||0;
+  curD().renda=val;
+  i.style.display='none';
+  v.style.display='';
+  save();
+  renderOrc();
 }
+function cancelRenda(){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  i.style.display='none';
+  v.style.display='';
+}
+// Clique fora do campo de renda fecha e salva
+document.addEventListener('click', function(e){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  if(i && i.style.display==='block' && e.target!==i && e.target!==v){
+    saveRenda();
+  }
+});
 
 let donutInst=null;
 function renderOrc(){
@@ -865,12 +887,7 @@ function driveAutoReconnect(){
   }
 }
 
-// Override save() to also sync to Drive
-const _originalSave = save;
-function save(){
-  _originalSave();
-  if(driveConnected) driveSyncToCloud();
-}
+
 
 
 window.addEventListener("DOMContentLoaded", () => { init(); driveAutoReconnect(); });
