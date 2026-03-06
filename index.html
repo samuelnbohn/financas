@@ -409,14 +409,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <!-- MODAL META FIN -->
 <div class="modal-overlay" id="m-mf">
   <div class="modal">
-    <h2>Nova Meta Financeira</h2>
+    <h2 id="mf-modal-title">Nova Meta Financeira</h2>
     <div class="fg"><label>Nome</label><input type="text" id="mf-nome" placeholder="Ex: Viagem para Europa"></div>
     <div class="fg"><label>Valor alvo (R$)</label><input type="number" id="mf-alvo" placeholder="10000" min="0"></div>
     <div class="fg"><label>Já acumulado (R$)</label><input type="number" id="mf-atual" placeholder="0" min="0"></div>
     <div class="fg"><label>Prazo (opcional)</label><input type="month" id="mf-prazo"></div>
     <div class="mactions">
       <button class="mbtn mc" onclick="closeM('m-mf')">Cancelar</button>
-      <button class="mbtn mk" onclick="saveMF()">Criar meta</button>
+      <button class="mbtn mk" id="mf-modal-btn" onclick="saveMF()">Criar meta</button>
     </div>
   </div>
 </div>
@@ -646,25 +646,53 @@ function renderMF(){
     return`<div class="mf-item">
       <div class="mf-top">
         <div><div class="mf-name">${m.nome}</div>${m.prazo?`<div class="mf-prazo">Prazo: ${m.prazo}</div>`:''}</div>
-        <button class="mf-del" onclick="delMF(${i})">✕</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="mf-del" style="color:#888;font-size:12px;padding:2px 8px;border:1px solid #ddd;border-radius:6px;background:var(--white)" onclick="editMF(${i})">✏️ Editar</button>
+          <button class="mf-del" onclick="delMF(${i})">✕</button>
+        </div>
       </div>
       <div class="mf-prog"><div class="mf-bar" style="width:${p}%"></div></div>
       <div class="mf-nums"><span>${fmt(m.atual)}</span><span>Meta: ${fmt(m.alvo)} · ${p.toFixed(0)}%</span></div>
     </div>`;
   }).join('');
 }
+let editingMFIdx = null;
+
 function openAddMF(){
+  editingMFIdx = null;
   ['mf-nome','mf-alvo','mf-atual','mf-prazo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mf-modal-title').textContent = 'Nova Meta Financeira';
+  document.getElementById('mf-modal-btn').textContent = 'Criar meta';
   openM('m-mf');
 }
-function saveMF(){
-  const nome=document.getElementById('mf-nome').value.trim();
-  const alvo=parseFloat(document.getElementById('mf-alvo').value)||0;
-  const atual=parseFloat(document.getElementById('mf-atual').value)||0;
-  const prazo=document.getElementById('mf-prazo').value;
-  if(!nome||!alvo)return;
-  S.mfs.push({nome,alvo,atual,prazo});save();closeM('m-mf');renderMF();
+
+function editMF(i){
+  editingMFIdx = i;
+  const m = S.mfs[i];
+  document.getElementById('mf-nome').value  = m.nome;
+  document.getElementById('mf-alvo').value  = m.alvo;
+  document.getElementById('mf-atual').value = m.atual;
+  document.getElementById('mf-prazo').value = m.prazo||'';
+  document.getElementById('mf-modal-title').textContent = 'Editar Meta';
+  document.getElementById('mf-modal-btn').textContent = 'Salvar alterações';
+  openM('m-mf');
 }
+
+function saveMF(){
+  const nome  = document.getElementById('mf-nome').value.trim();
+  const alvo  = parseFloat(document.getElementById('mf-alvo').value)||0;
+  const atual = parseFloat(document.getElementById('mf-atual').value)||0;
+  const prazo = document.getElementById('mf-prazo').value;
+  if(!nome||!alvo)return;
+  if(editingMFIdx !== null){
+    S.mfs[editingMFIdx] = {nome,alvo,atual,prazo};
+    editingMFIdx = null;
+  } else {
+    S.mfs.push({nome,alvo,atual,prazo});
+  }
+  save();closeM('m-mf');renderMF();
+}
+
 function delMF(i){if(!confirm('Remover esta meta?'))return;S.mfs.splice(i,1);save();renderMF()}
 
 let barInst=null,catInst=null;
