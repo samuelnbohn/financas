@@ -383,13 +383,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="fg"><label>Descrição</label><input type="text" id="g-desc" placeholder="Ex: Supermercado"></div>
     <div class="fg"><label>Valor (R$)</label><input type="number" id="g-val" placeholder="0,00" min="0" step="0.01"></div>
     <div class="fg"><label>Categoria</label>
-      <select id="g-cat">
+      <select id="g-cat" onchange="toggleMetaSelect()">
         <option value="custos">Custos Fixos</option>
         <option value="conforto">Conforto</option>
         <option value="metas">Metas</option>
         <option value="prazeres">Prazeres</option>
         <option value="liberdade">Liberdade Financeira</option>
         <option value="conhecimento">Conhecimento</option>
+      </select>
+    </div>
+    <div class="fg" id="fg-meta-sel" style="display:none">
+      <label>Qual meta?</label>
+      <select id="g-meta-id">
+        <option value="">— Selecione uma meta —</option>
       </select>
     </div>
     <div class="fg"><label>Data</label><input type="date" id="g-date"></div>
@@ -551,7 +557,7 @@ function renderOrc(){
     const cat=CATS.find(c=>c.id===g.cat);
     return`<div class="gitem">
       <div class="gdot" style="background:${cat.color}"></div>
-      <div class="gdesc"><div class="gdesc-main">${g.desc}</div><div class="gdesc-cat">${cat.label}</div></div>
+      <div class="gdesc"><div class="gdesc-main">${g.desc}</div><div class="gdesc-cat">${cat.label}${g.cat==='metas'&&g.metaIdx!==undefined&&S.mfs[g.metaIdx]?' · '+S.mfs[g.metaIdx].nome:''}</div></div>
       <div class="gval">${fmt(g.val)}</div>
       <div class="gdate">${g.date.split('-').reverse().join('/')}</div>
       <button class="gdel" onclick="delGasto(${g.i})">✕</button>
@@ -559,11 +565,24 @@ function renderOrc(){
   }).join('');
 }
 
+function toggleMetaSelect(){
+  const cat=document.getElementById('g-cat').value;
+  const fg=document.getElementById('fg-meta-sel');
+  const sel=document.getElementById('g-meta-id');
+  if(cat==='metas'){
+    fg.style.display='block';
+    sel.innerHTML='<option value="">— Selecione uma meta —</option>'+
+      S.mfs.map((m,i)=>`<option value="${i}">${m.nome} (${fmt(m.atual)} / ${fmt(m.alvo)})</option>`).join('');
+  } else {
+    fg.style.display='none';
+  }
+}
 function openAddGasto(){
   document.getElementById('g-desc').value='';
   document.getElementById('g-val').value='';
   document.getElementById('g-cat').value='custos';
   document.getElementById('g-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fg-meta-sel').style.display='none';
   openM('m-gasto');
 }
 function saveGasto(){
@@ -572,10 +591,26 @@ function saveGasto(){
   const cat=document.getElementById('g-cat').value;
   const date=document.getElementById('g-date').value;
   if(!desc||!val||!date)return;
-  curD().gastos.push({desc,val,cat,date});
+  const gasto={desc,val,cat,date};
+  if(cat==='metas'){
+    const midx=document.getElementById('g-meta-id').value;
+    if(midx!==''){
+      gasto.metaIdx=parseInt(midx);
+      S.mfs[gasto.metaIdx].atual=(S.mfs[gasto.metaIdx].atual||0)+val;
+    }
+  }
+  curD().gastos.push(gasto);
   save();closeM('m-gasto');renderOrc();
 }
-function delGasto(i){if(!confirm('Remover este lançamento?'))return;curD().gastos.splice(i,1);save();renderOrc()}
+function delGasto(i){
+  if(!confirm('Remover este lançamento?'))return;
+  const g=curD().gastos[i];
+  if(g.cat==='metas' && g.metaIdx!==undefined && S.mfs[g.metaIdx]){
+    S.mfs[g.metaIdx].atual=Math.max(0,(S.mfs[g.metaIdx].atual||0)-g.val);
+  }
+  curD().gastos.splice(i,1);
+  save();renderOrc();
+}
 
 function renderMetas(){
   document.getElementById('sliders').innerHTML=CATS.map(c=>`
