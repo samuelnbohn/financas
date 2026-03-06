@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Finanças Pessoais</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<style>
+:root {
+  --bg:#f0f0eb; --white:#fff; --sidebar:#111;
+  --lime:#d4f064; --black:#111;
+  --text:#111; --muted:#888;
+  --border:#e2e2dc; --radius:18px; --rsm:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+
+/* LOGIN */
+
+
+
+
+
+
+
+
+
+
+
+
+/* LAYOUT */
+#app{display:block;height:100vh}
+.layout{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sidebar{width:68px;background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:4px;flex-shrink:0;border-radius:0 16px 16px 0}
+.sb-logo{width:42px;height:42px;background:var(--lime);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;cursor:pointer}
+.sb-item{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:#666;transition:all .2s;position:relative}
+.sb-item:hover{background:#222;color:#fff}
+.sb-item.active{background:var(--white);color:var(--black)}
+.sb-item.active::after{content:'';position:absolute;right:-4px;width:3px;height:18px;background:var(--lime);border-radius:2px 0 0 2px}
+.sb-bottom{margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:4px}
+.sb-avatar{width:38px;height:38px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--black);cursor:pointer;margin-top:6px}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:24px 24px 24px 20px}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:#ddd;border-radius:99px}
+
+/* PAGE */
+.page{display:none!important}
+.page.active{display:block!important}
+
+/* PAGE HEADER */
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.ph-left{}
+.ph-title{font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ph-badge{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:16px}
+.ph-badge.lime{background:var(--lime)}
+.ph-badge.dark{background:var(--black);font-size:14px}
+.ph-sub{color:var(--muted);font-size:13px;margin-top:4px}
+.ph-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* BUTTONS */
+.btn-black{background:var(--black);color:#fff;border:none;border-radius:99px;padding:10px 18px;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-black:hover{background:#333}
+.btn-outline{background:var(--white);color:var(--black);border:1.5px solid var(--border);border-radius:99px;padding:9px 16px;font-family:'Instrument Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-outline:hover{border-color:var(--black)}
+
+/* MONTH NAV */
+.month-nav{display:flex;align-items:center;gap:8px}
+.mnav-btn{width:30px;height:30px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.mnav-btn:hover{border-color:var(--black)}
+.mnav-label{background:var(--black);color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;min-width:100px;text-align:center}
+
+/* RENDA INLINE */
+.renda-section{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.renda-label{font-size:11px;color:var(--lime);text-transform:uppercase;letter-spacing:.6px;font-weight:700;background:var(--black);padding:2px 8px;border-radius:99px}
+.renda-val{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;letter-spacing:-1px;cursor:pointer;transition:color .2s}
+.renda-val:hover{color:#555}
+#renda-inp{display:none;background:var(--white);border:1.5px solid var(--black);border-radius:10px;padding:5px 10px;font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--text);outline:none;width:160px;text-align:right}
+
+/* DASHBOARD GRID */
+
+@media(max-width:1200px){}
+@media(max-width:900px){}
+
+
+
+/* QUICK LINKS CARD */
+.quick-card{background:var(--white);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column;gap:8px}
+.ql{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--rsm);border:1.5px solid var(--border);cursor:pointer;transition:all .2s;background:var(--bg)}
+.ql:hover{border-color:var(--black);background:var(--white)}
+.ql-l{display:flex;align-items:center;gap:9px}
+.ql-icon{width:30px;height:30px;background:var(--white);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ql-title{font-size:13px;font-weight:600}
+.ql-sub{font-size:11px;color:var(--muted)}
+.ql-arr{font-size:11px;color:var(--muted)}
+
+/* BOTTOM GRID */
+.bottom-grid{display:grid;grid-template-columns:1fr 320px;gap:14px}
+@media(max-width:1100px){.bottom-grid{grid-template-columns:1fr}}
+
+/* WHITE CARD */
+.wcard{background:var(--white);border-radius:var(--radius);padding:22px}
+.wcard-title{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+
+/* RESUMO TABLE */
+.rtable{width:100%;border-collapse:collapse}
+.rtable th{font-size:11px;color:var(--muted);text-align:left;padding-bottom:10px;font-weight:600;border-bottom:1.5px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+.rtable td{padding:10px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.rtable tr:last-child td{border-bottom:none}
+.cbadge{display:flex;align-items:center;gap:7px;font-weight:500}
+.cdot{border-radius:50%;flex-shrink:0}
+.pbar-w{width:70px;background:var(--bg);border-radius:99px;height:5px;overflow:hidden}
+.pbar{height:100%;border-radius:99px;transition:width .4s}
+.ok{color:#2a9d4b;font-weight:700}.over{color:#e55;font-weight:700}
+.rfooter{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border)}
+.rfi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.rfi-val{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:800;margin-top:2px}
+
+/* METAS SIDEBAR */
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border-bottom:none}
+.mrow-name{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500}
+.mrow-pct{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:14px}
+.edit-btn{width:100%;margin-top:14px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);border-radius:var(--rsm);padding:9px;font-size:12px;cursor:pointer;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;transition:all .2s}
+.edit-btn:hover{border-color:var(--black);color:var(--black)}
+
+/* GASTOS */
+.gastos-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.gastos-hd-title{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:700}
+.glist{display:flex;flex-direction:column;gap:7px}
+.gitem{background:var(--white);border-radius:var(--rsm);padding:12px 16px;display:flex;align-items:center;gap:11px;border:1.5px solid transparent;transition:border-color .2s}
+.gitem:hover{border-color:var(--border)}
+.gdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.gdesc{flex:1;min-width:0}
+.gdesc-main{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gdesc-cat{font-size:11px;color:var(--muted)}
+.gval{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:800}
+.gdate{font-size:11px;color:var(--muted);margin-left:10px}
+.gdel{background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;margin-left:6px;padding:2px}
+.gdel:hover{color:#e55}
+.empty{text-align:center;padding:36px;color:var(--muted);font-size:13px}
+
+/* METAS PAGE */
+.metas-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.metas-grid{grid-template-columns:1fr}}
+.slider-item{margin-bottom:16px}
+.slider-lbl{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}
+.slider-name{display:flex;align-items:center;gap:7px;font-weight:500}
+.slider-val{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px}
+input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:99px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--black);cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 1.5px var(--black)}
+.total-pill{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:var(--rsm);padding:12px 16px;margin-top:16px;font-size:13px;font-weight:500}
+.tval{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px}
+.tok{color:#2a9d4b}.terr{color:#e55}
+.twarn{font-size:12px;color:#e55;margin-top:6px}
+.mf-item{background:var(--bg);border-radius:var(--rsm);padding:14px;margin-bottom:10px}
+.mf-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.mf-name{font-size:14px;font-weight:600}
+.mf-prazo{font-size:11px;color:var(--muted);margin-top:2px}
+.mf-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px}
+.mf-del:hover{color:#e55}
+.mf-prog{background:var(--border);border-radius:99px;height:7px;overflow:hidden;margin-bottom:8px}
+.mf-bar{height:100%;background:var(--black);border-radius:99px;transition:width .5s}
+.mf-nums{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.mf-nums span:first-child{color:var(--text);font-weight:700}
+
+/* HISTORICO */
+.hist-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.hist-charts{grid-template-columns:1fr}}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:500;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:24px;padding:30px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:su .2s ease}
+@keyframes su{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal h2{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:800;margin-bottom:18px;letter-spacing:-.5px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:6px}
+.fg input,.fg select{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.fg input:focus,.fg select:focus{border-color:var(--black)}
+.fg select option{background:#fff}
+.mactions{display:flex;gap:10px;margin-top:18px}
+.mbtn{flex:1;border-radius:10px;padding:12px;font-size:13px;font-weight:700;font-family:'Bricolage Grotesque',sans-serif;cursor:pointer;transition:all .2s}
+.mc{background:var(--bg);border:1.5px solid var(--border);color:var(--text)}
+.mc:hover{border-color:var(--black)}
+.mk{background:var(--black);color:#fff;border:none;flex:2}
+.mk:hover{background:#333}
+
+/* HIST TABLE */
+.htable{width:100%;border-collapse:collapse;font-size:13px}
+.htable th{text-align:left;color:var(--muted);font-size:11px;font-weight:600;padding-bottom:10px;border-bottom:1.5px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+.htable td{padding:11px 0;border-bottom:1px solid var(--border)}
+.htable tr:last-child td{border-bottom:none}
+.mbadge{background:var(--black);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;display:inline-block}
+</style>
+</head>
+<body>
+
+<!-- APP -->
+<div id="app">
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">💰</div>
+    <div class="sb-item active" onclick="goTo('orcamento')" title="Orçamento">📊</div>
+    <div class="sb-item" onclick="goTo('metas')" title="Metas">🎯</div>
+    <div class="sb-item" onclick="goTo('historico')" title="Histórico">📈</div>
+    <div class="sb-bottom">
+      <div class="sb-item" id="sb-drive" onclick="openDriveModal()" title="Google Drive">☁️</div>
+      <div class="sb-item" onclick="exportData()" title="Exportar backup">💾</div>
+      <div class="sb-item" onclick="document.getElementById('imp').click()" title="Importar backup">📂</div>
+      <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(this)">
+      <div class="sb-avatar">U</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div id="drive-bar" style="display:none;background:var(--white);border-radius:var(--rsm);padding:10px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;border:1.5px solid var(--border);flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="drive-bar-icon" style="font-size:18px">☁️</span>
+        <div>
+          <div style="font-weight:600;font-size:13px" id="drive-bar-text">Não conectado ao Google Drive</div>
+          <div style="font-size:11px;color:var(--muted)" id="drive-bar-sub">Dados salvos apenas localmente</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--muted)" id="drive-bar-time"></span>
+        <button id="drive-bar-btn" class="btn-black" style="font-size:12px;padding:8px 14px" onclick="openDriveModal()">Conectar</button>
+      </div>
+    </div>
+
+    <!-- ══ ORÇAMENTO ══ -->
+    <div class="page active" id="page-orcamento">
+
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-title">
+            Orçamento <span class="ph-badge lime">💸</span> Mensal
+          </div>
+          <div class="ph-sub">Controle seus gastos com base nas suas metas</div>
+        </div>
+        <div class="ph-right">
+          <div class="month-nav">
+            <button class="mnav-btn" onclick="changeMonth(-1)">‹</button>
+            <div class="mnav-label" id="month-pill">—</div>
+            <button class="mnav-btn" onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="renda-section">
+            <div class="renda-label">Renda</div>
+            <div class="renda-val" id="renda-disp" onclick="editRenda()">R$ 0,00</div>
+            <input id="renda-inp" type="number" placeholder="0" min="0" step="0.01"
+              onkeydown="if(event.key==='Enter'){saveRenda()}else if(event.key==='Escape'){cancelRenda()}">
+          </div>
+          <button class="btn-black" onclick="openAddGasto()">+ Lançar gasto</button>
+        </div>
+      </div>
+
+      <div class="quick-card" style="margin-bottom:14px">
+        <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Ações</div>
+        <div class="ql" onclick="goTo('metas')">
+          <div class="ql-l"><div class="ql-icon">🎯</div><div><div class="ql-title">Minhas Metas</div><div class="ql-sub">Editar distribuição</div></div></div>
+          <span class="ql-arr">↗</span>
+        </div>
+        <div class="ql" onclick="goTo('historico')">
+          <div class="ql-l"><div class="ql-icon">📈</div><div><div class="ql-title">Histórico</div><div class="ql-sub">Ver evolução</div></div></div>
+          <span class="ql-arr">↗</span>
+        </div>
+        <div class="ql" onclick="exportData()">
+          <div class="ql-l"><div class="ql-icon">💾</div><div><div class="ql-title">Exportar backup</div><div class="ql-sub">Arquivo JSON</div></div></div>
+          <span class="ql-arr">↗</span>
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="wcard">
+            <div class="wcard-title">📊 Distribuição de gastos</div>
+            <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:center">
+              <div style="position:relative;width:180px;height:180px">
+                <canvas id="donutChart"></canvas>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+                  <div style="font-size:11px;color:var(--muted)">Total gasto</div>
+                  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:800" id="donut-total">R$ 0</div>
+                </div>
+              </div>
+              <div>
+                <table class="rtable">
+                  <thead><tr><th>Categoria</th><th>Orçado</th><th>Gasto</th><th>Uso</th></tr></thead>
+                  <tbody id="rtbody"></tbody>
+                </table>
+                <div class="rfooter">
+                  <div><div class="rfi-label">Gastos reais</div><div class="rfi-val" id="rf-gastos">R$ 0,00</div></div>
+                  <div><div class="rfi-label">Disponível</div><div class="rfi-val" id="rf-disp">R$ 0,00</div></div>
+                  <div><div class="rfi-label">% Utilizado</div><div class="rfi-val" id="rf-pct">0%</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="wcard">
+            <div class="gastos-hd">
+              <div class="gastos-hd-title">Lançamentos do mês</div>
+              <button class="btn-black" style="font-size:12px;padding:8px 14px" onclick="openAddGasto()">+ Adicionar</button>
+            </div>
+            <div class="glist" id="gastos-list"><div class="empty">Nenhum gasto lançado neste mês</div></div>
+          </div>
+        </div>
+
+        <div class="wcard">
+          <div class="wcard-title">🎯 Minhas Metas</div>
+          <div id="metas-sidebar"></div>
+          <button class="edit-btn" onclick="goTo('metas')">Editar percentuais →</button>
+        </div>
+      </div>
+
+    </div><!-- /page-orcamento -->
+
+    <!-- ══ METAS ══ -->
+    <div class="page" id="page-metas">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-title">Minhas <span class="ph-badge lime">🎯</span> Metas</div>
+          <div class="ph-sub">Configure a distribuição da renda e seus objetivos</div>
+        </div>
+        <button class="btn-black" onclick="openAddMF()">+ Nova meta financeira</button>
+      </div>
+      <div class="metas-grid">
+        <div class="wcard">
+          <div class="wcard-title">Distribuição da Renda</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Defina o % de cada categoria. A soma deve ser 100%.</p>
+          <div id="sliders"></div>
+          <div class="total-pill">
+            <span>Total alocado</span>
+            <span class="tval" id="total-pct">100%</span>
+          </div>
+          <div class="twarn" id="total-warn"></div>
+        </div>
+        <div class="wcard">
+          <div class="wcard-title">Metas Financeiras</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Acompanhe o progresso dos seus objetivos.</p>
+          <div id="mf-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTÓRICO ══ -->
+    <div class="page" id="page-historico">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="ph-title">Histórico <span class="ph-badge lime">📈</span></div>
+          <div class="ph-sub">Evolução financeira ao longo dos meses</div>
+        </div>
+      </div>
+      <div class="hist-charts">
+        <div class="wcard"><div class="wcard-title">Renda vs Gastos Reais</div><canvas id="barChart" height="220"></canvas></div>
+        <div class="wcard"><div class="wcard-title">Gastos por Categoria</div><canvas id="catChart" height="220"></canvas></div>
+      </div>
+      <div class="wcard">
+        <div class="wcard-title">Resumo por Mês</div>
+        <table class="htable">
+          <thead><tr><th>Mês</th><th>Renda</th><th>Gastos reais</th><th>Metas</th><th>Liberdade Fin.</th><th>Saldo</th><th>% Gasto</th></tr></thead>
+          <tbody id="htbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /layout -->
+</div><!-- /app -->
+
+<!-- MODAL GASTO -->
+<div class="modal-overlay" id="m-gasto">
+  <div class="modal">
+    <h2>Novo Lançamento</h2>
+    <div class="fg"><label>Descrição</label><input type="text" id="g-desc" placeholder="Ex: Supermercado"></div>
+    <div class="fg"><label>Valor (R$)</label><input type="number" id="g-val" placeholder="0,00" min="0" step="0.01"></div>
+    <div class="fg"><label>Categoria</label>
+      <select id="g-cat" onchange="toggleMetaSelect()">
+        <option value="custos">Custos Fixos</option>
+        <option value="conforto">Conforto</option>
+        <option value="metas">Metas</option>
+        <option value="prazeres">Prazeres</option>
+        <option value="liberdade">Liberdade Financeira</option>
+        <option value="conhecimento">Conhecimento</option>
+      </select>
+    </div>
+    <div class="fg" id="fg-meta-sel" style="display:none">
+      <label>Qual meta?</label>
+      <select id="g-meta-id">
+        <option value="">— Selecione uma meta —</option>
+      </select>
+    </div>
+    <div class="fg"><label>Data</label><input type="date" id="g-date"></div>
+    <div class="mactions">
+      <button class="mbtn mc" onclick="closeM('m-gasto')">Cancelar</button>
+      <button class="mbtn mk" onclick="saveGasto()">Salvar lançamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL META FIN -->
+<div class="modal-overlay" id="m-mf">
+  <div class="modal">
+    <h2>Nova Meta Financeira</h2>
+    <div class="fg"><label>Nome</label><input type="text" id="mf-nome" placeholder="Ex: Viagem para Europa"></div>
+    <div class="fg"><label>Valor alvo (R$)</label><input type="number" id="mf-alvo" placeholder="10000" min="0"></div>
+    <div class="fg"><label>Já acumulado (R$)</label><input type="number" id="mf-atual" placeholder="0" min="0"></div>
+    <div class="fg"><label>Prazo (opcional)</label><input type="month" id="mf-prazo"></div>
+    <div class="mactions">
+      <button class="mbtn mc" onclick="closeM('m-mf')">Cancelar</button>
+      <button class="mbtn mk" onclick="saveMF()">Criar meta</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS=[
+  {id:'custos',      label:'Custos Fixos',        color:'#111111', def:30, gasto:true},
+  {id:'conforto',    label:'Conforto',             color:'#2a9d4b', def:10, gasto:true},
+  {id:'metas',       label:'Metas',                color:'#c9920a', def:20, gasto:false},
+  {id:'prazeres',    label:'Prazeres',             color:'#d4395e', def:10, gasto:true},
+  {id:'liberdade',   label:'Liberdade Financeira', color:'#5550d6', def:25, gasto:false},
+  {id:'conhecimento',label:'Conhecimento',         color:'#d4691e', def:5,  gasto:true},
+];
+
+let S={pcts:{custos:30,conforto:10,metas:20,prazeres:10,liberdade:25,conhecimento:5},meses:{},mfs:[],cur:''};
+
+function save(){try{localStorage.setItem('fin3',JSON.stringify(S))}catch(e){} if(driveConnected) driveSyncToCloud();}
+function load(){try{const d=localStorage.getItem('fin3');if(d)S=JSON.parse(d)}catch(e){}}
+function mk(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function ml(k){const[y,m]=k.split('-');const n=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];return n[+m-1]+'/'+y}
+function curD(){if(!S.meses[S.cur])S.meses[S.cur]={renda:0,gastos:[]};return S.meses[S.cur]}
+function fmt(v){return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtp(v){return v.toFixed(1).replace('.',',')+' %'}
+
+function init(){
+  load();
+  if(!S.cur)S.cur=mk(new Date());
+  // Ensure only orcamento page is visible on start
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-orcamento').classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sb-item')[0].classList.add('active');
+  renderOrc();
+}
+
+function goTo(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+  const idx={orcamento:0,metas:1,historico:2};
+  document.querySelectorAll('.sb-item')[idx[p]].classList.add('active');
+  if(p==='orcamento')renderOrc();
+  if(p==='metas')renderMetas();
+  if(p==='historico')renderHist();
+}
+
+function changeMonth(d){
+  const[y,m]=S.cur.split('-').map(Number);
+  S.cur=mk(new Date(y,m-1+d,1));save();renderOrc();
+}
+
+function editRenda(){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  i.value=curD().renda||'';
+  i.style.display='block';
+  v.style.display='none';
+  setTimeout(()=>i.focus(),50);
+}
+function saveRenda(){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  const val=parseFloat(i.value)||0;
+  curD().renda=val;
+  i.style.display='none';
+  v.style.display='';
+  save();
+  renderOrc();
+}
+function cancelRenda(){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  i.style.display='none';
+  v.style.display='';
+}
+// Clique fora do campo de renda fecha e salva
+document.addEventListener('click', function(e){
+  const i=document.getElementById('renda-inp');
+  const v=document.getElementById('renda-disp');
+  if(i && i.style.display==='block' && e.target!==i && e.target!==v){
+    saveRenda();
+  }
+});
+
+let donutInst=null;
+function renderOrc(){
+  document.getElementById('month-pill').textContent=ml(S.cur);
+  const d=curD();
+  document.getElementById('renda-disp').textContent=fmt(d.renda);
+  const gs=d.gastos||[];
+  const tc={};CATS.forEach(c=>tc[c.id]=0);
+  gs.forEach(g=>{tc[g.cat]=(tc[g.cat]||0)+g.val});
+  const renda=d.renda;
+  const totReal=CATS.filter(c=>c.gasto).reduce((s,c)=>s+tc[c.id],0);
+  const gastaveisBudget=CATS.filter(c=>c.gasto).reduce((s,c)=>s+(renda*S.pcts[c.id]/100),0);
+
+  // DONUT
+  const dctx=document.getElementById('donutChart').getContext('2d');
+  if(donutInst)donutInst.destroy();
+  const dv=CATS.map(c=>tc[c.id]);
+  const empty=dv.every(v=>v===0);
+  donutInst=new Chart(dctx,{
+    type:'doughnut',
+    data:{labels:CATS.map(c=>c.label),datasets:[{data:empty?CATS.map(()=>1):dv,backgroundColor:CATS.map(c=>c.color),borderWidth:0}]},
+    options:{cutout:'68%',plugins:{legend:{display:false},tooltip:{enabled:!empty}}}
+  });
+  document.getElementById('donut-total').textContent=fmt(totReal);
+
+  // RESUMO TABLE
+  document.getElementById('rtbody').innerHTML=CATS.map(c=>{
+    const b=renda*S.pcts[c.id]/100;
+    const g=tc[c.id];
+    const p=b>0?g/b*100:0;
+    return`<tr>
+      <td><div class="cbadge"><div class="cdot" style="width:8px;height:8px;background:${c.color}"></div>${c.label}</div></td>
+      <td>${fmt(b)}</td>
+      <td>${fmt(g)}</td>
+      <td class="${p>100?'over':'ok'}">${fmtp(p)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rf-gastos').textContent=fmt(totReal);
+  document.getElementById('rf-disp').textContent=fmt(Math.max(0,gastaveisBudget-totReal));
+  const pctG=gastaveisBudget>0?totReal/gastaveisBudget*100:0;
+  document.getElementById('rf-pct').textContent=fmtp(pctG);
+
+  // METAS SIDEBAR
+  document.getElementById('metas-sidebar').innerHTML=CATS.map(c=>`
+    <div class="mrow">
+      <div class="mrow-name"><div class="cdot" style="width:8px;height:8px;background:${c.color}"></div>${c.label}</div>
+      <div class="mrow-pct" style="color:${c.color}">${S.pcts[c.id]}%</div>
+    </div>`).join('');
+
+  // GASTOS LIST
+  const gl=document.getElementById('gastos-list');
+  if(!gs.length){gl.innerHTML='<div class="empty">Nenhum gasto lançado neste mês</div>';return}
+  const sorted=[...gs].map((g,i)=>({...g,i})).sort((a,b)=>b.date.localeCompare(a.date));
+  gl.innerHTML=sorted.map(g=>{
+    const cat=CATS.find(c=>c.id===g.cat);
+    return`<div class="gitem">
+      <div class="gdot" style="background:${cat.color}"></div>
+      <div class="gdesc"><div class="gdesc-main">${g.desc}</div><div class="gdesc-cat">${cat.label}${g.cat==='metas'&&g.metaIdx!==undefined&&S.mfs[g.metaIdx]?' · '+S.mfs[g.metaIdx].nome:''}</div></div>
+      <div class="gval">${fmt(g.val)}</div>
+      <div class="gdate">${g.date.split('-').reverse().join('/')}</div>
+      <button class="gdel" onclick="delGasto(${g.i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleMetaSelect(){
+  const cat=document.getElementById('g-cat').value;
+  const fg=document.getElementById('fg-meta-sel');
+  const sel=document.getElementById('g-meta-id');
+  if(cat==='metas'){
+    fg.style.display='block';
+    sel.innerHTML='<option value="">— Selecione uma meta —</option>'+
+      S.mfs.map((m,i)=>`<option value="${i}">${m.nome} (${fmt(m.atual)} / ${fmt(m.alvo)})</option>`).join('');
+  } else {
+    fg.style.display='none';
+  }
+}
+function openAddGasto(){
+  document.getElementById('g-desc').value='';
+  document.getElementById('g-val').value='';
+  document.getElementById('g-cat').value='custos';
+  document.getElementById('g-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fg-meta-sel').style.display='none';
+  openM('m-gasto');
+}
+function saveGasto(){
+  const desc=document.getElementById('g-desc').value.trim();
+  const val=parseFloat(document.getElementById('g-val').value);
+  const cat=document.getElementById('g-cat').value;
+  const date=document.getElementById('g-date').value;
+  if(!desc||!val||!date)return;
+  const gasto={desc,val,cat,date};
+  if(cat==='metas'){
+    const midx=document.getElementById('g-meta-id').value;
+    if(midx!==''){
+      gasto.metaIdx=parseInt(midx);
+      S.mfs[gasto.metaIdx].atual=(S.mfs[gasto.metaIdx].atual||0)+val;
+    }
+  }
+  curD().gastos.push(gasto);
+  save();closeM('m-gasto');renderOrc();
+}
+function delGasto(i){
+  if(!confirm('Remover este lançamento?'))return;
+  const g=curD().gastos[i];
+  if(g.cat==='metas' && g.metaIdx!==undefined && S.mfs[g.metaIdx]){
+    S.mfs[g.metaIdx].atual=Math.max(0,(S.mfs[g.metaIdx].atual||0)-g.val);
+  }
+  curD().gastos.splice(i,1);
+  save();renderOrc();
+}
+
+function renderMetas(){
+  document.getElementById('sliders').innerHTML=CATS.map(c=>`
+    <div class="slider-item">
+      <div class="slider-lbl">
+        <div class="slider-name"><div class="cdot" style="width:9px;height:9px;background:${c.color}"></div>${c.label}</div>
+        <div class="slider-val" id="sv-${c.id}">${S.pcts[c.id]}%</div>
+      </div>
+      <input type="range" min="0" max="100" value="${S.pcts[c.id]}"
+        style="background:linear-gradient(to right,${c.color} ${S.pcts[c.id]}%,#e2e2dc ${S.pcts[c.id]}%)"
+        oninput="updSlider('${c.id}',this,'${c.color}')">
+    </div>`).join('');
+  updTotal();renderMF();
+}
+function updSlider(id,el,color){
+  S.pcts[id]=+el.value;
+  document.getElementById('sv-'+id).textContent=S.pcts[id]+'%';
+  el.style.background=`linear-gradient(to right,${color} ${S.pcts[id]}%,#e2e2dc ${S.pcts[id]}%)`;
+  updTotal();save();
+}
+function updTotal(){
+  const t=Object.values(S.pcts).reduce((a,b)=>a+b,0);
+  const el=document.getElementById('total-pct');
+  el.textContent=t+'%';
+  el.className='tval '+(t===100?'tok':'terr');
+  document.getElementById('total-warn').textContent=t===100?'':t>100?'⚠️ Reduza para totalizar 100%':'⚠️ Faltam '+(100-t)+'% para completar';
+}
+function renderMF(){
+  const el=document.getElementById('mf-list');
+  if(!S.mfs.length){el.innerHTML='<div class="empty" style="padding:20px">Nenhuma meta criada ainda</div>';return}
+  el.innerHTML=S.mfs.map((m,i)=>{
+    const p=m.alvo>0?Math.min(100,m.atual/m.alvo*100):0;
+    return`<div class="mf-item">
+      <div class="mf-top">
+        <div><div class="mf-name">${m.nome}</div>${m.prazo?`<div class="mf-prazo">Prazo: ${m.prazo}</div>`:''}</div>
+        <button class="mf-del" onclick="delMF(${i})">✕</button>
+      </div>
+      <div class="mf-prog"><div class="mf-bar" style="width:${p}%"></div></div>
+      <div class="mf-nums"><span>${fmt(m.atual)}</span><span>Meta: ${fmt(m.alvo)} · ${p.toFixed(0)}%</span></div>
+    </div>`;
+  }).join('');
+}
+function openAddMF(){
+  ['mf-nome','mf-alvo','mf-atual','mf-prazo'].forEach(id=>document.getElementById(id).value='');
+  openM('m-mf');
+}
+function saveMF(){
+  const nome=document.getElementById('mf-nome').value.trim();
+  const alvo=parseFloat(document.getElementById('mf-alvo').value)||0;
+  const atual=parseFloat(document.getElementById('mf-atual').value)||0;
+  const prazo=document.getElementById('mf-prazo').value;
+  if(!nome||!alvo)return;
+  S.mfs.push({nome,alvo,atual,prazo});save();closeM('m-mf');renderMF();
+}
+function delMF(i){if(!confirm('Remover esta meta?'))return;S.mfs.splice(i,1);save();renderMF()}
+
+let barInst=null,catInst=null;
+function renderHist(){
+  const meses=Object.keys(S.meses).sort();
+  const labels=meses.map(ml);
+  const rendas=meses.map(k=>S.meses[k].renda||0);
+  const reais=meses.map(k=>{const gs=S.meses[k].gastos||[];return CATS.filter(c=>c.gasto).reduce((s,c)=>s+gs.filter(g=>g.cat===c.id).reduce((a,b)=>a+b.val,0),0)});
+  const bctx=document.getElementById('barChart').getContext('2d');
+  if(barInst)barInst.destroy();
+  barInst=new Chart(bctx,{type:'bar',data:{labels,datasets:[
+    {label:'Renda',data:rendas,backgroundColor:'#d4f064cc',borderRadius:6,borderSkipped:false},
+    {label:'Gastos',data:reais,backgroundColor:'#111111cc',borderRadius:6,borderSkipped:false}
+  ]},options:{plugins:{legend:{labels:{color:'#111',font:{size:11},boxRadius:4}}},scales:{x:{ticks:{color:'#888'},grid:{color:'#eee'}},y:{ticks:{color:'#888',callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'#eee'}}}}});
+  const last=meses.slice(-6);
+  const cctx=document.getElementById('catChart').getContext('2d');
+  if(catInst)catInst.destroy();
+  catInst=new Chart(cctx,{type:'bar',data:{labels:last.map(ml),datasets:CATS.map(c=>({
+    label:c.label,
+    data:last.map(k=>{const gs=S.meses[k]?.gastos||[];return gs.filter(g=>g.cat===c.id).reduce((a,b)=>a+b.val,0)}),
+    backgroundColor:c.color+'cc',borderRadius:3
+  }))},options:{plugins:{legend:{labels:{color:'#111',font:{size:10},boxWidth:10,boxRadius:3}}},scales:{x:{stacked:true,ticks:{color:'#888'},grid:{color:'#eee'}},y:{stacked:true,ticks:{color:'#888'},grid:{color:'#eee'}}}}});
+  const tb=document.getElementById('htbody');
+  if(!meses.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#888;padding:20px">Nenhum dado ainda</td></tr>';return}
+  tb.innerHTML=[...meses].reverse().map(k=>{
+    const d=S.meses[k];const r=d.renda||0;const gs=d.gastos||[];
+    const re=CATS.filter(c=>c.gasto).reduce((s,c)=>s+gs.filter(g=>g.cat===c.id).reduce((a,b)=>a+b.val,0),0);
+    const me=gs.filter(g=>g.cat==='metas').reduce((a,b)=>a+b.val,0);
+    const li=gs.filter(g=>g.cat==='liberdade').reduce((a,b)=>a+b.val,0);
+    const sa=r-gs.reduce((a,b)=>a+b.val,0);
+    const p=r>0?re/r*100:0;
+    return`<tr>
+      <td><span class="mbadge">${ml(k)}</span></td>
+      <td>${fmt(r)}</td><td>${fmt(re)}</td><td>${fmt(me)}</td><td>${fmt(li)}</td>
+      <td style="color:${sa>=0?'#2a9d4b':'#e55'};font-weight:700">${fmt(sa)}</td>
+      <td style="color:${p>100?'#e55':'#2a9d4b'};font-weight:700">${fmtp(p)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openM(id){document.getElementById(id).classList.add('open')}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+window.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open')});
+function exportData(){const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='financas_'+new Date().toISOString().split('T')[0]+'.json';a.click()}
+function importData(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{S=JSON.parse(e.target.result);save();goTo('orcamento');alert('Dados importados!')}catch(err){alert('Arquivo inválido.')}};r.readAsText(f);input.value=''}
+
+
+// ══════════════════════════════════════
+// GOOGLE DRIVE BACKUP
+// ══════════════════════════════════════
+const DRIVE_FILE = 'financas_backup.json';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+let driveConnected = false;
+let driveFileId = null;
+let driveTokenClient = null;
+let gapiLoaded = false;
+let gisLoaded = false;
+let syncTimer = null;
+
+function driveConfigLoad(){
+  try{ const c=localStorage.getItem('fin_drive'); return c?JSON.parse(c):null; }catch(e){return null;}
+}
+function driveConfigSave(cfg){
+  try{ localStorage.setItem('fin_drive', JSON.stringify(cfg)); }catch(e){}
+}
+
+function openDriveModal(){
+  const cfg = driveConfigLoad();
+  // If already connected, show disconnect option
+  if(driveConnected){
+    if(confirm('Desconectar do Google Drive?')){
+      try{ google.accounts.oauth2.revoke(gapi.client.getToken()?.access_token, ()=>{}); }catch(e){}
+      try{ gapi.client.setToken(null); }catch(e){}
+      driveConnected=false; driveFileId=null;
+      driveUpdateUI();
+    }
+    return;
+  }
+  document.getElementById('drive-client-id-input').value = cfg?.clientId||'';
+  document.getElementById('drive-origin-display').value = window.location.origin||window.location.href.split('/').slice(0,3).join('/');
+  document.getElementById('drive-modal-btn').textContent = 'Salvar e conectar';
+  openM('m-drive');
+}
+
+function driveConnect(){
+  const clientId = document.getElementById('drive-client-id-input').value.trim();
+  if(!clientId){ alert('Insira o Client ID'); return; }
+  driveConfigSave({clientId});
+  closeM('m-drive');
+  driveInit(clientId);
+}
+
+function driveInit(clientId){
+  driveUpdateUILoading();
+
+  function tryConnect(){
+    if(!gapiLoaded || !gisLoaded) return;
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: async (resp) => {
+        if(resp.error){ driveUpdateUIError(resp.error); return; }
+        driveConnected = true;
+        driveUpdateUI();
+        await driveLoadFromCloud();
+      }
+    });
+    const token = gapi.client.getToken();
+    driveTokenClient.requestAccessToken({prompt: token ? '' : 'consent'});
+  }
+
+  if(!gapiLoaded){
+    gapi.load('client', async () => {
+      await gapi.client.init({
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+      });
+      gapiLoaded = true;
+      tryConnect();
+    });
+  }
+
+  if(!gisLoaded){
+    // GIS loads async - poll until ready
+    const waitGIS = setInterval(()=>{
+      if(typeof google !== 'undefined' && google.accounts){
+        gisLoaded = true;
+        clearInterval(waitGIS);
+        tryConnect();
+      }
+    }, 200);
+  } else {
+    tryConnect();
+  }
+}
+
+async function driveSyncToCloud(){
+  if(!driveConnected) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try{
+      const body = JSON.stringify(S, null, 2);
+      if(driveFileId){
+        await gapi.client.request({
+          path: `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}`,
+          method: 'PATCH',
+          params: {uploadType:'media'},
+          headers: {'Content-Type':'application/json'},
+          body
+        });
+      } else {
+        const boundary = 'fin_bnd_001';
+        const multipart = [
+          '--'+boundary,
+          'Content-Type: application/json; charset=UTF-8','',
+          JSON.stringify({name:DRIVE_FILE, parents:['appDataFolder']}),
+          '--'+boundary,
+          'Content-Type: application/json','',
+          body,
+          '--'+boundary+'--'
+        ].join('\r\n');
+        const res = await gapi.client.request({
+          path: 'https://www.googleapis.com/upload/drive/v3/files',
+          method: 'POST',
+          params: {uploadType:'multipart'},
+          headers: {'Content-Type':`multipart/related; boundary=${boundary}`},
+          body: multipart
+        });
+        driveFileId = res.result.id;
+      }
+      const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('drive-bar-time').textContent = 'Salvo às '+t;
+    }catch(e){ console.warn('Drive save error:', e); }
+  }, 1500);
+}
+
+async function driveLoadFromCloud(){
+  if(!driveConnected) return;
+  try{
+    const list = await gapi.client.drive.files.list({
+      spaces: 'appDataFolder',
+      fields: 'files(id,name)',
+      q: `name='${DRIVE_FILE}'`
+    });
+    const files = list.result.files;
+    if(files && files.length > 0){
+      driveFileId = files[0].id;
+      const res = await gapi.client.drive.files.get({fileId: driveFileId, alt:'media'});
+      const data = typeof res.result === 'string' ? JSON.parse(res.result) : res.result;
+      if(data && data.meses){
+        S = data;
+        save();
+        renderOrc();
+        const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        document.getElementById('drive-bar-time').textContent = 'Sincronizado às '+t;
+      }
+    }
+  }catch(e){ console.warn('Drive load error:', e); }
+}
+
+function driveUpdateUI(){
+  const bar = document.getElementById('drive-bar');
+  bar.style.display = 'flex';
+  const icon = document.getElementById('drive-bar-icon');
+  const text = document.getElementById('drive-bar-text');
+  const sub  = document.getElementById('drive-bar-sub');
+  const btn  = document.getElementById('drive-bar-btn');
+  const sb   = document.getElementById('sb-drive');
+  if(driveConnected){
+    icon.textContent = '✅';
+    text.textContent = 'Google Drive conectado';
+    sub.textContent  = 'Sincronizando automaticamente';
+    btn.textContent  = 'Desconectar';
+    btn.style.background = '#c0392b';
+    if(sb) sb.title = 'Drive conectado';
+  } else {
+    icon.textContent = '☁️';
+    text.textContent = 'Google Drive não conectado';
+    sub.textContent  = 'Dados salvos apenas localmente';
+    btn.textContent  = 'Conectar';
+    btn.style.background = 'var(--black)';
+    if(sb) sb.title = 'Conectar Google Drive';
+  }
+}
+
+function driveUpdateUILoading(){
+  const bar = document.getElementById('drive-bar');
+  bar.style.display = 'flex';
+  document.getElementById('drive-bar-icon').textContent = '⏳';
+  document.getElementById('drive-bar-text').textContent = 'Conectando ao Google Drive...';
+  document.getElementById('drive-bar-sub').textContent  = 'Aguarde a autenticação';
+  document.getElementById('drive-bar-btn').textContent  = 'Aguarde...';
+}
+
+function driveUpdateUIError(err){
+  document.getElementById('drive-bar-icon').textContent = '❌';
+  document.getElementById('drive-bar-text').textContent = 'Erro: '+err;
+  document.getElementById('drive-bar-btn').textContent  = 'Tentar novamente';
+  document.getElementById('drive-bar-btn').style.background = 'var(--black)';
+}
+
+// Auto-reconectar se já tinha clientId salvo
+function driveAutoReconnect(){
+  driveUpdateUI(); // show bar
+  const cfg = driveConfigLoad();
+  if(cfg && cfg.clientId){
+    // Check if GIS/GAPI already loaded
+    const waitAll = setInterval(()=>{
+      if(typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts){
+        clearInterval(waitAll);
+        gisLoaded = true;
+        driveInit(cfg.clientId);
+      }
+    }, 300);
+    setTimeout(()=>clearInterval(waitAll), 10000); // timeout after 10s
+  }
+}
+
+
+
+
+window.addEventListener("DOMContentLoaded", () => { init(); driveAutoReconnect(); });
+</script>
+
+<!-- MODAL DRIVE -->
+<div class="modal-overlay" id="m-drive">
+  <div class="modal">
+    <h2>☁️ Google Drive</h2>
+    <div id="drive-modal-body">
+      <div style="background:var(--bg);border-radius:var(--rsm);padding:14px;margin-bottom:18px;font-size:13px;line-height:1.7;color:var(--muted)">
+        <strong style="color:var(--text)">Como configurar (só uma vez):</strong><br>
+        1. Acesse <a href="https://console.cloud.google.com" target="_blank" style="color:var(--black);font-weight:600">console.cloud.google.com</a><br>
+        2. Crie um projeto → ative <strong style="color:var(--text)">Google Drive API</strong><br>
+        3. Credenciais → OAuth 2.0 → tipo <strong style="color:var(--text)">Aplicativo da Web</strong><br>
+        4. Em "Origens autorizadas" cole a URL do seu site<br>
+        5. Cole o <strong style="color:var(--text)">Client ID</strong> abaixo
+      </div>
+      <div class="fg">
+        <label>Client ID</label>
+        <input type="text" id="drive-client-id-input" placeholder="xxxx.apps.googleusercontent.com" style="font-size:12px">
+      </div>
+      <div class="fg">
+        <label>URL do seu site (para referência)</label>
+        <input type="text" id="drive-origin-display" readonly style="color:var(--muted);font-size:12px">
+      </div>
+    </div>
+    <div class="mactions">
+      <button class="mbtn mc" onclick="closeM('m-drive')">Cancelar</button>
+      <button class="mbtn mk" id="drive-modal-btn" onclick="driveConnect()">Salvar e conectar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
